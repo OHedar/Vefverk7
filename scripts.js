@@ -31,8 +31,7 @@
  * @property {number} price Verð á vöru, jákvæð heiltala stærri en 0.
  */
 
-// Við viljum geta haft fleiri en eina vöru þannig að við þurfum að hafa fylki af vörum.
-// Við byrjum með fylki sem hefur færslur en gætum síðan í forritinu okkar bætt við vörum.
+// Við viljum g okkar bætt við vörum.
 
 /**
  * Fylki af vörum sem hægt er að kaupa.
@@ -121,11 +120,11 @@ const cart = {
  * const price = formatPrice(123000);
  * console.log(price); // Skrifar út `123.000 kr.`
  * @param {number} price Verð til að sníða.
- * @returns Verð sniðið með íslenskum krónu.
+ * @returns {string} Verð sniðið með íslenskum krónu.
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl
  */
 function formatPrice(price) {
-  /* Útfæra */
+  return new Intl.NumberFormat('is-IS', { style: 'currency', currency: 'ISK' }).format(price);
 }
 
 /**
@@ -136,7 +135,7 @@ function formatPrice(price) {
  * @returns `true` ef `num` er heiltala á bilinu `[min, max]`, annars `false`.
  */
 function validateInteger(num, min = 0, max = Infinity) {
-  /* Útfæra */
+  return min <= num && num <= max;
 }
 
 /**
@@ -151,7 +150,16 @@ function validateInteger(num, min = 0, max = Infinity) {
  * @returns Streng sem inniheldur upplýsingar um vöru og hugsanlega fjölda af henni.
  */
 function formatProduct(product, quantity = undefined) {
-  /* Útfæra */
+  if(quantity && quantity > 1){
+    //Falsy gildi:
+    //'',0,null,undefined,falce
+    //Truthy gildi:
+    //Öll gildi sem ekki eru falsy, t.d.
+    //1,'1',true.[],{}
+    const total = formatPrice(quantity*product.price);
+    return`${product.title} - ${quantity}x${formatPrice(product.price)} samtals ${total}`;
+  }  
+  return `${product.title} - ${product.price}`;
 }
 
 /**
@@ -166,7 +174,21 @@ function formatProduct(product, quantity = undefined) {
  * @returns Streng sem inniheldur upplýsingar um körfu.
  */
 function cartInfo(cart) {
-  /* Útfæra */
+  let heildarVerd = 0;
+  let afritKarfa = '';
+
+  if(cart.lines.length === 0){
+    return `Ekkert er í körfunni.\n`;
+  }
+
+  for (const line of cart.lines){
+    afritKarfa += `${formatProduct(line.product, line.quantity)}\n`;
+    heildarVerd +=(line.product.price*line.quantity);
+  }
+
+  afritKarfa += `Samtals: ${formatPrice(heildarVerd)}`;
+
+  return afritKarfa;
 }
 
 // --------------------------------------------------------
@@ -258,8 +280,16 @@ function addProduct() {
  * @returns undefined
  */
 function showProducts() {
-  /* Útfæra */
-  /* Hér ætti að nota `formatPrice` hjálparfall */
+  let teljari =0;
+  let allarVorur ='';
+
+  for (const product of products){
+    teljari +=1;
+    let voruLina= `#${teljari} ${product.title} - ${product.description} - ${formatPrice(product.price)}\n`;
+    allarVorur += `${voruLina}\n`;
+  }
+
+  console.info(allarVorur);
 }
 
 /**
@@ -278,10 +308,38 @@ function showProducts() {
  * @returns undefined
  */
 function addProductToCart() {
-  /* Útfæra */
+  const userInput = prompt(`Auðkenni vöru:`);
+  const id = Number.parseInt(userInput, 10);
 
-  /* Hér ætti að nota `validateInteger` hjálparfall til að staðfesta gögn frá notanda */
+  if (!id) return;
+
+  if(!validateInteger(id,1,10000)){
+    console.error('Auðkenni vöru er ekki löglegt, verður að vera heiltala stærri en 0.');
+    return;
+  }
+  if(!products.find(product => product.id === id)){
+    console.error('Vara fannst ekki');
+    return;
+  }
+
+  const fjoldi = Number.parseInt(prompt('Magn:'), 10);
+  if (!fjoldi) return;
+
+  if(!validateInteger(fjoldi,1,99)){
+    console.error('Fjöldi er ekki löglegur, lágmark 1 og hámark 99.');
+    return;
+  }
   
+  let vara  = cart.lines.findIndex(item=>item.product.id ===id);
+  if(vara !== -1){ //mínus einn ef vara finnst ekki í körfu
+    cart.lines[vara].quantity += fjoldi;
+    console.info(`Magn vöru uppfært: ${formatProduct(products.find(product => product.id === id), cart.lines[vara].quantity)}`);
+    return;
+  }
+  if(vara === -1){
+    cart.lines.push({product: products.find(product => product.id ===id), quantity: fjoldi})
+  }
+  console.info(`Vöru hefur verið bætt við körfu: ${formatProduct(products.find(product => product.id === id), fjoldi)}`);
   /* Til að athuga hvort vara sé til í `cart` þarf að nota `cart.lines.find` */
 }
 
@@ -298,7 +356,7 @@ function addProductToCart() {
  * @returns undefined
  */
 function showCart() {
-  /* Útfæra */
+  console.info(cartInfo(cart));
 }
 
 /**
@@ -320,5 +378,26 @@ function showCart() {
  * @returns undefined
  */
 function checkout() {
-  /* Útfæra */
+  if (cart.lines.length ===0){
+    console.error('Karfan er tóm.');
+    return;
+  }
+
+  const nafn = prompt('Nafn:');
+  if(!nafn){
+    console.error('Nafn vantar.');
+    return;
+  }
+
+  const heim = prompt('Heimilisfang:');
+  if(!heim){
+    console.error('Heimilisfang varntar vantar.');
+    return;
+  }
+  var kvittun = '';
+  kvittun += `Pöntun móttekin, ${nafn}.\n`;
+  kvittun += `Vörur verða sendar á ${heim}.\n`;
+  kvittun += '\n';
+  kvittun += cartInfo(cart);
+  console.info(kvittun);
 }
